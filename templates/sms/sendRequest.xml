@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Message>
+    <Key>{{apiKey}}</Key>
+
+    {% for message in messages %}
+    <SMS>
+        <To>{{message.getToPhoneNumber}}</To>
+        <Content>{{message.getMessage}}</Content>
+
+        {% if message.getHandler.getFrom is empty == false %}
+        <From>{{message.getFrom}}</From>
+        {% endif %}
+
+        {% if message.getHandler.getClientId is empty == false %}
+        <ClientID>{{message.getHandler.getClientId}}</ClientID>
+        {% endif %}
+
+        {% if message.getHandler.getTruncate == false %}
+        <Truncate>0</Truncate>
+        {% else %}
+        <Truncate>1</Truncate>
+        {% endif %}
+
+        {% if message.getHandler.getInvalidCharAction == "error" %}
+        <InvalidCharAction>0</InvalidCharAction>
+        {% elseif message.getHandler.getInvalidCharAction == "remove" %}
+        <InvalidCharAction>1</InvalidCharAction>
+        {% elseif message.getHandler.getInvalidCharAction == "replace" %}
+        <InvalidCharAction>1</InvalidCharAction>
+        {% endif %}
+
+        <WrapperID>loop.index</WrapperID>
+    </SMS>
+    {% endfor %}
+</Message>

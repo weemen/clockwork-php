@@ -4,6 +4,8 @@ namespace Clockwork\Clients;
 
 use Clockwork\Exceptions\InvalidArgumentException as InvalidArgumentException;
 use Clockwork\Messages\SMS as SMSMessage;
+use Twig_Environment;
+use Twig_Loader_Filesystem;
 
 class SMSClient {
 
@@ -58,6 +60,71 @@ class SMSClient {
     public $proxy_port;
 
     /**
+     * @param string $key
+     */
+    public function setKey($key)
+    {
+        $this->key = $key;
+    }
+
+    /**
+     * @return string
+     */
+    public function getKey()
+    {
+        return $this->key;
+    }
+
+    /**
+     * @param string $proxy_host
+     */
+    public function setProxyHost($proxy_host)
+    {
+        $this->proxy_host = $proxy_host;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProxyHost()
+    {
+        return $this->proxy_host;
+    }
+
+    /**
+     * @param int $proxy_port
+     */
+    public function setProxyPort($proxy_port)
+    {
+        $this->proxy_port = $proxy_port;
+    }
+
+    /**
+     * @return int
+     */
+    public function getProxyPort()
+    {
+        return $this->proxy_port;
+    }
+
+    /**
+     * @param boolean $ssl
+     */
+    public function setSsl($ssl)
+    {
+        $this->ssl = $ssl;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getSsl()
+    {
+        return $this->ssl;
+    }
+
+
+    /**
      * Send some text messages
      * @param array $sms
      * @return array
@@ -66,76 +133,86 @@ class SMSClient {
      */
     public function send(array $smsMessages) {
 
-        $req_doc = new DOMDocument('1.0', 'UTF-8');
-        $root = $req_doc->createElement('Message');
-        $req_doc->appendChild($root);
+        $loader       = new Twig_Loader_Filesystem('../../../templates/sms');
+        $twig         = new Twig_Environment($loader);
+        $template     = $twig->loadTemplate('sendRequest.xml');
+        $requestXML   = $template->render(array(
+                            "apiKey" => $this->getKey(),
+                            "messages" => $smsMessages
+                        ));
 
-        $user_node = $req_doc->createElement('Key');
-        $user_node->appendChild($req_doc->createTextNode($this->key));
-        $root->appendChild($user_node);
-
-        foreach ($smsMessages as $smsMessage) {
-
-            if (!$smsMessage instanceof SMSMessage) {
-                throw new InvalidArgumentException("Array smsMessage contains wrong data");
-            }
-
-            $sms_node = $req_doc->createElement('SMS');
-            // Phone number
-            $sms_node->appendChild($req_doc->createElement('To', $smsMessage->getToPhoneNumber()));
-            // Message text
-            $content_node = $req_doc->createElement('Content');
-            $content_node->appendChild($req_doc->createTextNode($smsMessage->getMessage()));
-            $sms_node->appendChild($content_node);
-
-
-            if ($smsMessage->getHandler()->getFrom() !== "") {
-                $from_node = $req_doc->createElement('From');
-                $from_node->appendChild($req_doc->createTextNode($smsMessage->getHandler()->getFrom()));
-                $sms_node->appendChild($from_node);
-            }
-
-            if ($smsMessage->getHandler()->getClientId() !== "") {
-                $client_id_node = $req_doc->createElement('ClientID');
-                $client_id_node->appendChild($req_doc->createTextNode($smsMessage->getHandler()->getClientId()));
-                $sms_node->appendChild($client_id_node);
-            }
-
-            $long = $smsMessage->getHandler()->getLong();
-            $long_node = $req_doc->createElement('Long');
-            $long_node->appendChild($req_doc->createTextNode($long ? 1 : 0));
-            $sms_node->appendChild($long_node);
-
-            $truncate = $smsMessage->getHandler()->getTruncate();
-            $trunc_node = $req_doc->createElement('Truncate');
-            $trunc_node->appendChild($req_doc->createTextNode($truncate ? 1 : 0));
-            $sms_node->appendChild($trunc_node);
-
-            switch (strtolower($smsMessage->getHandler()->getInvalidCharAction())) {
-                case 'error':
-                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 1));
-                    break;
-                case 'remove':
-                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 2));
-                    break;
-                case 'replace':
-                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 3));
-                    break;
-                default:
-                    break;
-            }
-
-            $sms_node->appendChild($req_doc->createElement('WrapperID', key($smsMessages)));
-
-            $root->appendChild($sms_node);
-        }
-
-        $req_xml = $req_doc->saveXML();
-
-        $response = $this->postToClockwork(self::API_SMS_METHOD, $req_xml);
+        $response = $this->postToClockwork(self::API_SMS_METHOD, $requestXML);
         $this->processResponse($response);
 
         return $response;
+
+//        $req_doc = new DOMDocument('1.0', 'UTF-8');
+//        $root = $req_doc->createElement('Message');
+//        $req_doc->appendChild($root);
+//
+//        $user_node = $req_doc->createElement('Key');
+//        $user_node->appendChild($req_doc->createTextNode($this->key));
+//        $root->appendChild($user_node);
+
+//        foreach ($smsMessages as $smsMessage) {
+//
+//            if (!$smsMessage instanceof SMSMessage) {
+//                throw new InvalidArgumentException("Array smsMessage contains wrong data");
+//            }
+
+//            $sms_node = $req_doc->createElement('SMS');
+//            // Phone number
+//            $sms_node->appendChild($req_doc->createElement('To', $smsMessage->getToPhoneNumber()));
+//            // Message text
+//            $content_node = $req_doc->createElement('Content');
+//            $content_node->appendChild($req_doc->createTextNode($smsMessage->getMessage()));
+//            $sms_node->appendChild($content_node);
+
+
+//            if ($smsMessage->getHandler()->getFrom() !== "") {
+//                $from_node = $req_doc->createElement('From');
+//                $from_node->appendChild($req_doc->createTextNode($smsMessage->getHandler()->getFrom()));
+//                $sms_node->appendChild($from_node);
+//            }
+
+//            if ($smsMessage->getHandler()->getClientId() !== "") {
+//                $client_id_node = $req_doc->createElement('ClientID');
+//                $client_id_node->appendChild($req_doc->createTextNode($smsMessage->getHandler()->getClientId()));
+//                $sms_node->appendChild($client_id_node);
+//            }
+
+// ######### UITZOEKEN #######
+//            $long = $smsMessage->getHandler()->getLong();
+//            $long_node = $req_doc->createElement('Long');
+//            $long_node->appendChild($req_doc->createTextNode($long ? 1 : 0));
+//            $sms_node->appendChild($long_node);
+
+// ######### DEFAULT ACCOUNT MOET GEBRUIKT WORDEN #######
+//            $truncate = $smsMessage->getHandler()->getTruncate();
+//            $trunc_node = $req_doc->createElement('Truncate');
+//            $trunc_node->appendChild($req_doc->createTextNode($truncate ? 1 : 0));
+//            $sms_node->appendChild($trunc_node);
+
+//            switch (strtolower($smsMessage->getHandler()->getInvalidCharAction())) {
+//                case 'error':
+//                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 1));
+//                    break;
+//                case 'remove':
+//                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 2));
+//                    break;
+//                case 'replace':
+//                    $sms_node->appendChild($req_doc->createElement('InvalidCharAction', 3));
+//                    break;
+//                default:
+//                    break;
+//            }
+//
+//            $sms_node->appendChild($req_doc->createElement('WrapperID', key($smsMessages)));
+//
+//            $root->appendChild($sms_node);
+//        }
+//
+//        $req_xml = $req_doc->saveXML();
     }
 
     protected function processResponse($resp_xml)
